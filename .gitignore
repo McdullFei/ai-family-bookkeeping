@@ -1,0 +1,5 @@
+data/
+uploads/
+family-ledger
+*.db
+*.exe

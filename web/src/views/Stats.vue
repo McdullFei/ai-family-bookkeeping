@@ -40,23 +40,26 @@
     </n-grid>
 
     <n-grid :cols="2" :x-gap="16" :y-gap="16" responsive="screen" item-responsive>
-      <!-- Daily Trend -->
+      <!-- Trend -->
       <n-gi span="2 m:1">
         <n-card title="支出趋势" size="small">
-          <v-chart :option="lineOption" style="height:280px" autoresize />
+          <div ref="lineChartRef" style="height:280px"></div>
+          <n-empty v-if="!trendData.length" description="暂无趋势数据" />
         </n-card>
       </n-gi>
       <!-- Category Ranking -->
       <n-gi span="2 m:1">
         <n-card title="支出分类排行" size="small">
-          <div v-for="(cat, i) in stats.categories" :key="cat.category_id" style="margin-bottom:12px">
-            <n-space justify="space-between" align="center" style="margin-bottom:4px">
-              <span>{{ ['🥇','🥈','🥉'][i] || (i+1) }} {{ cat.category_name }}</span>
-              <n-text>¥{{ cat.amount.toFixed(2) }} <n-text depth="3" style="font-size:12px">{{ cat.ratio }}</n-text></n-text>
-            </n-space>
-            <n-progress type="line" :percentage="parseFloat(cat.ratio)" :show-indicator="false" :color="categoryColors[i % categoryColors.length]" />
+          <div v-if="stats.categories && stats.categories.length">
+            <div v-for="(cat, i) in stats.categories" :key="cat.category_id" style="margin-bottom:12px">
+              <n-space justify="space-between" align="center" style="margin-bottom:4px">
+                <span>{{ ['🥇','🥈','🥉'][i] || (i+1) }} {{ cat.category_name }}</span>
+                <n-text>¥{{ Number(cat.amount).toFixed(2) }} <n-text depth="3" style="font-size:12px">{{ cat.ratio }}</n-text></n-text>
+              </n-space>
+              <n-progress type="line" :percentage="parseFloat(cat.ratio)" :show-indicator="false" :color="categoryColors[i % categoryColors.length]" />
+            </div>
           </div>
-          <n-empty v-if="!stats.categories?.length" description="暂无数据" />
+          <n-empty v-else description="暂无分类数据" />
         </n-card>
       </n-gi>
     </n-grid>
@@ -64,44 +67,40 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, computed } from 'vue'
-import { getMonthlyStats, getStatsByMember, getMembers } from '../api'
-import VChart from 'vue-echarts'
-import { use } from 'echarts/core'
-import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart } from 'echarts/charts'
-import { GridComponent, TooltipComponent } from 'echarts/components'
-
-use([CanvasRenderer, LineChart, GridComponent, TooltipComponent])
+import { ref, onMounted, watch, nextTick } from 'vue'
+import { getMonthlyStats, getWeeklyStats, getDailyStats, getStatsByMember, getMembers } from '../api'
 
 const period = ref('monthly')
 const selectedMonth = ref(Date.now())
 const memberFilter = ref(null)
 const memberOptions = ref([])
+const lineChartRef = ref(null)
+const trendData = ref([])
 
-const stats = ref({ income: 0, expense: 0, balance: 0, incomeChange: '', expenseChange: '', yoyIncomeChange: '', yoyExpenseChange: '', categories: [] })
+const stats = ref({
+  income: 0, expense: 0, balance: 0,
+  incomeChange: '', expenseChange: '',
+  yoyIncomeChange: '', yoyExpenseChange: '',
+  categories: []
+})
 const categoryColors = ['#d03050', '#2080f0', '#f0a020', '#8a2be2', '#18a058', '#999']
-
-const lineOption = computed(() => ({
-  tooltip: { trigger: 'axis' },
-  grid: { left: 50, right: 20, bottom: 30, top: 20 },
-  xAxis: { type: 'category', data: [] },
-  yAxis: { type: 'value', axisLabel: { formatter: v => v >= 1000 ? (v/1000)+'k' : v } },
-  series: [{
-    type: 'line', data: [], smooth: true,
-    areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(208,48,80,0.3)' }, { offset: 1, color: 'rgba(208,48,80,0)' }] } },
-    lineStyle: { color: '#d03050' }, itemStyle: { color: '#d03050' },
-  }],
-}))
 
 const loadData = async () => {
   try {
     const d = new Date(selectedMonth.value)
-    const month = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`
+    const month = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
     const params = { month }
     if (memberFilter.value) params.member = memberFilter.value
 
-    const res = await getMonthlyStats(params)
+    let res
+    if (period.value === 'daily') {
+      res = await getDailyStats(params)
+    } else if (period.value === 'weekly') {
+      res = await getWeeklyStats(params)
+    } else {
+      res = await getMonthlyStats(params)
+    }
+
     stats.value = {
       income: res.income || 0,
       expense: res.expense || 0,
@@ -112,6 +111,7 @@ const loadData = async () => {
       yoyExpenseChange: res.compare?.yoy?.expense_change || 'N/A',
       categories: res.categories || [],
     }
+    trendData.value = res.trend || []
   } catch (e) {
     console.error('Stats load failed:', e)
   }

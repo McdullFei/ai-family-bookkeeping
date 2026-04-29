@@ -14,8 +14,15 @@
       </n-space>
 
       <!-- Table -->
-      <n-data-table :columns="columns" :data="records" :bordered="false" :loading="loading"
-        :pagination="pagination" :row-key="r => r.id" @update:page="handlePageChange" />
+      <n-data-table
+        :columns="columns"
+        :data="records"
+        :bordered="false"
+        :loading="loading"
+        :pagination="pagination"
+        :row-key="r => r.id"
+        @update:page="handlePageChange"
+      />
     </n-space>
   </n-card>
 
@@ -67,19 +74,42 @@ const categoryOptions = ref([])
 
 const columns = [
   { title: 'ID', key: 'id', width: 60 },
-  { title: '时间', key: 'record_time', width: 140, render: (row) => row.record_time?.slice(0, 16).replace('T', ' ') },
-  { title: '类型', key: 'type', width: 70, render: (row) => h(NTag, { type: row.type === 'income' ? 'success' : 'error', size: 'small' }, () => row.type === 'income' ? '收入' : '支出') },
-  { title: '分类', key: 'category', width: 100, render: (row) => `${row.category?.icon || ''} ${row.category?.name || ''}` },
-  { title: '金额', key: 'amount', width: 110, render: (row) => h(NText, { type: row.type === 'income' ? 'success' : 'error', strong: true }, () => `¥${row.amount.toFixed(2)}`) },
+  {
+    title: '时间', key: 'record_time', width: 140,
+    render: (row) => {
+      const t = row.record_time
+      return t ? t.slice(0, 16).replace('T', ' ') : '-'
+    }
+  },
+  {
+    title: '类型', key: 'type', width: 70,
+    render: (row) => h(NTag, { type: row.type === 'income' ? 'success' : 'error', size: 'small' }, { default: () => row.type === 'income' ? '收入' : '支出' })
+  },
+  {
+    title: '分类', key: 'category', width: 100,
+    render: (row) => {
+      const cat = row.category
+      return cat ? `${cat.icon || ''} ${cat.name || ''}` : '-'
+    }
+  },
+  {
+    title: '金额', key: 'amount', width: 110,
+    render: (row) => h(NText, { type: row.type === 'income' ? 'success' : 'error', strong: true }, { default: () => `¥${Number(row.amount).toFixed(2)}` })
+  },
   { title: '成员', key: 'member', width: 70 },
   { title: '备注', key: 'note', ellipsis: { tooltip: true } },
-  { title: '来源', key: 'source', width: 70, render: (row) => h(NTag, { type: row.source === 'ocr' ? 'info' : 'default', size: 'small' }, () => row.source === 'ocr' ? 'OCR' : '手动') },
+  {
+    title: '来源', key: 'source', width: 70,
+    render: (row) => h(NTag, { type: row.source === 'ocr' ? 'info' : 'default', size: 'small' }, { default: () => row.source === 'ocr' ? 'OCR' : '手动' })
+  },
   {
     title: '操作', key: 'actions', width: 140,
-    render: (row) => h(NSpace, { size: 'small' }, () => [
-      h(NButton, { size: 'small', onClick: () => openEdit(row) }, () => '编辑'),
-      h(NButton, { size: 'small', type: 'error', ghost: true, onClick: () => handleDelete(row) }, () => '删除'),
-    ]),
+    render: (row) => h(NSpace, { size: 'small' }, {
+      default: () => [
+        h(NButton, { size: 'small', onClick: () => openEdit(row) }, { default: () => '编辑' }),
+        h(NButton, { size: 'small', type: 'error', ghost: true, onClick: () => handleDelete(row) }, { default: () => '删除' }),
+      ]
+    }),
   },
 ]
 
@@ -92,7 +122,7 @@ const loadData = async () => {
     if (filters.value.category_id) params.category_id = filters.value.category_id
     if (filters.value.source) params.source = filters.value.source
     if (filters.value.keyword) params.note_like = filters.value.keyword
-    if (filters.value.dateRange) {
+    if (filters.value.dateRange && filters.value.dateRange[0] && filters.value.dateRange[1]) {
       params.start_date = new Date(filters.value.dateRange[0]).toISOString().slice(0, 10)
       params.end_date = new Date(filters.value.dateRange[1]).toISOString().slice(0, 10)
     }
@@ -101,7 +131,7 @@ const loadData = async () => {
     records.value = res.data || []
     pagination.value.itemCount = res.pagination?.total || 0
   } catch (e) {
-    message.error('加载失败')
+    message.error('加载失败: ' + (e.error || e.message || '未知错误'))
   } finally {
     loading.value = false
   }

@@ -1,11 +1,24 @@
 <template>
   <n-layout has-sider style="height:100vh">
-    <n-layout-sider bordered :width="220" :native-scrollbar="false" content-style="padding:0">
+    <n-layout-sider
+      bordered
+      :width="220"
+      :native-scrollbar="false"
+      content-style="padding:0"
+      :inverted="true"
+      style="background:#1f2937"
+    >
       <div style="padding:20px 16px 12px;border-bottom:1px solid rgba(255,255,255,.1)">
         <h2 style="margin:0;color:#fff;font-size:18px">🏠 家庭账本</h2>
-        <p style="margin:4px 0 0;color:rgba(255,255,255,.45);font-size:12px">AI-Powered Bookkeeping</p>
+        <p style="margin:4px 0 0;color:rgba(255,255,255,.55);font-size:12px">AI-Powered Bookkeeping</p>
       </div>
-      <n-menu :options="menuOptions" :value="activeKey" @update:value="handleMenu" :inverted="true" />
+      <n-menu
+        :options="menuOptions"
+        :value="activeKey"
+        @update:value="handleMenu"
+        :inverted="true"
+        :indent="24"
+      />
     </n-layout-sider>
     <n-layout>
       <n-layout-header bordered style="padding:12px 24px;display:flex;align-items:center;justify-content:space-between;background:#fff;position:sticky;top:0;z-index:50">
